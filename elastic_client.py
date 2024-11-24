@@ -1,6 +1,11 @@
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan
 from config import configReader as configreader
+from datetime import datetime
+from dict_processor import dictProcessor as dict_processor
+from tabulate import tabulate
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class elasticClient:
 
@@ -26,12 +31,29 @@ class elasticClient:
         Method that gets the data from elasticsearch
         :return: None
         """
+        previousMonth: str =  str(int(datetime.now().strftime("%Y%m")) -1) + "01000000"
+        actualMonth : str  = datetime.now().strftime("%Y%m") + "01000000"
+        print(previousMonth, actualMonth)
+        print(previousMonth)
         self.data = scan(self.elasticClient,
                           index=self.index,
                           #doc_type="_doc",
                           size=1000,
-                          query={"query": {"match_all": {}}},
+                          query={  "query": {
+                                   "bool": {
+                                     "must": [
+                                       {"match": {"TYPE": "M"}},
+                                       {"wildcard": {"STATE": "Delivered*"}},
+                                       {"range": {"STATE_TS": {
+                                           "gt" : previousMonth,
+                                           "lt":  actualMonth
+                                       }}}
+                                     ]
+                                   }
+                                 }
+                               }
                          )
+
 
 def main() -> None:
     """
@@ -43,8 +65,19 @@ def main() -> None:
     configuration: dict = configObject.configObject
     client = elasticClient(configuration)
     client.getData()
+    desired_keys_outbound_sms = ["SRC_NAME_NEW",
+                                 "DEST_MSC_Operator",
+                                 "DEST_IMSI_Operator",
+                                 "SINK_NAME",
+                                 "Routing_Index_BT"]
+    outbound_sms_dict_list: list = []
     for record in client.data:
-        print(record['_source'])
+        processor = dict_processor(record['_source'], list_of_keys=desired_keys_outbound_sms)
+        processed_dict = processor.select_desired_keys()
+        outbound_sms_dict_list.append(processed_dict)
+    print("##############Outbound SMS report##############")
+    print(tabulate(outbound_sms_dict_list, headers='keys', tablefmt="pretty"))
+
 
 if __name__ == "__main__":
    main()
