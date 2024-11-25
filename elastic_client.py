@@ -33,8 +33,6 @@ class elasticClient:
         """
         previousMonth: str =  str(int(datetime.now().strftime("%Y%m")) -1) + "01000000"
         actualMonth : str  = datetime.now().strftime("%Y%m") + "01000000"
-        print(previousMonth, actualMonth)
-        print(previousMonth)
         self.data = scan(self.elasticClient,
                           index=self.index,
                           #doc_type="_doc",
@@ -48,7 +46,20 @@ class elasticClient:
                                            "gt" : previousMonth,
                                            "lt":  actualMonth
                                        }}}
-                                     ]
+                                     ],
+                                       "filter": [
+                                           {
+                                               "bool": {
+                                                   "must_not": [
+                                                       {
+                                                           "term": {
+                                                               "SRC_SOURCE_NEW": "Inbound"
+                                                           }
+                                                       }
+                                                   ]
+                                               }
+                                           }
+                                       ]
                                    }
                                  }
                                }
@@ -75,8 +86,20 @@ def main() -> None:
         processor = dict_processor(record['_source'], list_of_keys=desired_keys_outbound_sms)
         processed_dict = processor.select_desired_keys()
         outbound_sms_dict_list.append(processed_dict)
-    print("##############Outbound SMS report##############")
-    print(tabulate(outbound_sms_dict_list, headers='keys', tablefmt="pretty"))
+
+    outbound_sms_unique_entries_set: list =list({v['SRC_NAME_NEW']:v for v in outbound_sms_dict_list}.values())
+    print(outbound_sms_unique_entries_set)
+    aggregated_outbound_sms_list : list = []
+    extended_aggregated_outbound_sms_list: list = []
+    for item in outbound_sms_unique_entries_set:
+        if item not in aggregated_outbound_sms_list:
+            aggregated_outbound_sms_list.append(item)
+            intermediate_dict = item.copy()
+            intermediate_dict['count'] = outbound_sms_dict_list.count(item)
+            extended_aggregated_outbound_sms_list.append(intermediate_dict)
+
+    print("##############Outbound SMS report########### ###")
+    print(tabulate(extended_aggregated_outbound_sms_list, headers='keys', tablefmt="pretty"))
 
 
 if __name__ == "__main__":

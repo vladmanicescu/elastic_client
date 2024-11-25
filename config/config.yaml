@@ -1,10 +1,10 @@
 elastic_client_config:
   elastic_protocol: https
-  elastichost: '3.235.234.88'
+  elastichost: '3.231.33.255'
   elasticPrefix: ''
   elasticport: '9200'
   elasticUser: 'elastic'
-  elasticPassword: 'Z6YQxuHA=T_m3RCs8GlU'
+  elasticPassword: '3-ULKg6VMPWuZWUIymMo'
   elasticIndex: 'sms'
   actions: []
   fileRecordCount: 160000
