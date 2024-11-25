@@ -86,20 +86,20 @@ def main() -> None:
         processor = dict_processor(record['_source'], list_of_keys=desired_keys_outbound_sms)
         processed_dict = processor.select_desired_keys()
         outbound_sms_dict_list.append(processed_dict)
-
-    outbound_sms_unique_entries_set: list =list({v['SRC_NAME_NEW']:v for v in outbound_sms_dict_list}.values())
-    print(outbound_sms_unique_entries_set)
-    aggregated_outbound_sms_list : list = []
-    extended_aggregated_outbound_sms_list: list = []
-    for item in outbound_sms_unique_entries_set:
-        if item not in aggregated_outbound_sms_list:
-            aggregated_outbound_sms_list.append(item)
-            intermediate_dict = item.copy()
-            intermediate_dict['count'] = outbound_sms_dict_list.count(item)
-            extended_aggregated_outbound_sms_list.append(intermediate_dict)
-
+    list_of_found_dicts: list = []
+    aggregated_list_of_sms_dict: dict = []
+    for item in outbound_sms_dict_list:
+        count: int = 0
+        for elem in outbound_sms_dict_list:
+            if elem == item:
+                count += 1
+        extended_dict_outbound_sms = item.copy()
+        extended_dict_outbound_sms["count"] = count
+        if item not in list_of_found_dicts:
+            list_of_found_dicts.append(item)
+            aggregated_list_of_sms_dict.append(extended_dict_outbound_sms)
     print("##############Outbound SMS report########### ###")
-    print(tabulate(extended_aggregated_outbound_sms_list, headers='keys', tablefmt="pretty"))
+    print(tabulate(aggregated_list_of_sms_dict, headers='keys', tablefmt="pretty"))
 
 
 if __name__ == "__main__":
