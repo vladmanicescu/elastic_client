@@ -26,7 +26,7 @@ class elasticClient:
         config_dict['elastic_client_config']['elasticPrefix'])
         self.elasticClient = Elasticsearch([self.elasticURL],verify_certs=False)
 
-    def getData(self) -> None:
+    def getData_outbound_sms(self) -> None:
         """
         Method that gets the data from elasticsearch
         :return: None
@@ -35,7 +35,6 @@ class elasticClient:
         actualMonth : str  = datetime.now().strftime("%Y%m") + "01000000"
         self.data = scan(self.elasticClient,
                           index=self.index,
-                          #doc_type="_doc",
                           size=1000,
                           query={  "query": {
                                    "bool": {
@@ -65,6 +64,45 @@ class elasticClient:
                                }
                          )
 
+    def getData_inbound_sms(self) -> None:
+        """
+        Method that gets the data from elasticsearch
+        :return: None
+        """
+        previousMonth: str =  str(int(datetime.now().strftime("%Y%m")) -1) + "01000000"
+        actualMonth : str  = datetime.now().strftime("%Y%m") + "01000000"
+        self.data = scan(self.elasticClient,
+                          index=self.index,
+                          size=1000,
+                          query={  "query": {
+                                   "bool": {
+                                     "must": [
+                                       {"match": {"TYPE": "M"}},
+                                       {"wildcard": {"STATE": "Delivered*"}},
+                                       {"wildcard": {"CALLING_PARTY_GT":"44*"}},
+                                       {"range": {"STATE_TS": {
+                                           "gt" : previousMonth,
+                                           "lt":  actualMonth
+                                       }}}
+                                     ],
+                                       "filter": [
+                                           {
+                                               "bool": {
+                                                   "must": [
+                                                       {
+                                                           "term": {
+                                                               "SRC_SOURCE_NEW": "Inbound"
+                                                           }
+                                                       }
+                                                   ]
+                                               }
+                                           }
+                                       ]
+                                   }
+                                 }
+                               }
+                         )
+
 
 def main() -> None:
     """
@@ -75,7 +113,7 @@ def main() -> None:
     configObject.generateConfigObject()
     configuration: dict = configObject.configObject
     client = elasticClient(configuration)
-    client.getData()
+    client.getData_outbound_sms()
     desired_keys_outbound_sms = ["SRC_NAME_NEW",
                                  "DEST_MSC_Operator",
                                  "DEST_IMSI_Operator",
