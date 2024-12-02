@@ -154,7 +154,21 @@ def main() -> None:
         del processed_dict['STATE_TS']
         processed_dict['Day'] = day_string
         inbound_sms_dict_list.append(processed_dict)
-    print(inbound_sms_dict_list)
+
+    list_of_found_dicts: list = []
+    aggregated_list_of_sms_dict: list = []
+    for item in inbound_sms_dict_list:
+        count: int = 0
+        for elem in inbound_sms_dict_list:
+            if elem == item:
+                count += 1
+        extended_dict_inbound_sms = item.copy()
+        extended_dict_inbound_sms["count"] = count
+        if item not in list_of_found_dicts:
+            list_of_found_dicts.append(item)
+            aggregated_list_of_sms_dict.append(extended_dict_inbound_sms)
+
+    print(aggregated_list_of_sms_dict)
 
 if __name__ == "__main__":
    main()
