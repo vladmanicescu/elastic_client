@@ -7,7 +7,7 @@ from tabulate import tabulate
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-class elasticClient:
+class elasticclient:
 
     def __init__(self, config_dict: dict) -> None:
         """
@@ -24,7 +24,7 @@ class elasticClient:
         config_dict['elastic_client_config']['elastichost'],
         config_dict['elastic_client_config']['elasticport'],
         config_dict['elastic_client_config']['elasticPrefix'])
-        self.elasticClient = Elasticsearch([self.elasticURL],verify_certs=False)
+        self.elasticclient = Elasticsearch([self.elasticURL],verify_certs=False)
 
     def getData_outbound_sms(self) -> None:
         """
@@ -33,7 +33,7 @@ class elasticClient:
         """
         previousMonth: str =  str(int(datetime.now().strftime("%Y%m")) -1) + "01000000"
         actualMonth : str  = datetime.now().strftime("%Y%m") + "01000000"
-        self.data = scan(self.elasticClient,
+        self.data = scan(self.elasticclient,
                           index=self.index,
                           size=1000,
                           query={  "query": {
@@ -52,7 +52,7 @@ class elasticClient:
                                                    "must_not": [
                                                        {
                                                            "term": {
-                                                               "SRC_SOURCE_NEW": "Inbound"
+                                                               "SRC_NAME_NEW": "Inbound"
                                                            }
                                                        }
                                                    ]
@@ -71,7 +71,7 @@ class elasticClient:
         """
         previousMonth: str =  str(int(datetime.now().strftime("%Y%m")) -1) + "01000000"
         actualMonth : str  = datetime.now().strftime("%Y%m") + "01000000"
-        self.data = scan(self.elasticClient,
+        self.data = scan(self.elasticclient,
                           index=self.index,
                           size=1000,
                           query={  "query": {
@@ -79,7 +79,7 @@ class elasticClient:
                                      "must": [
                                        {"match": {"TYPE": "M"}},
                                        {"wildcard": {"STATE": "Delivered*"}},
-                                       {"wildcard": {"CALLING_PARTY_GT":"44*"}},
+                                       {"wildcard": {"CALLING_PARTY_GT": '*43*'}},
                                        {"range": {"STATE_TS": {
                                            "gt" : previousMonth,
                                            "lt":  actualMonth
@@ -91,7 +91,7 @@ class elasticClient:
                                                    "must": [
                                                        {
                                                            "term": {
-                                                               "SRC_SOURCE_NEW": "Inbound"
+                                                               "SRC_NAME_NEW": "Inbound"
                                                            }
                                                        }
                                                    ]
@@ -112,20 +112,26 @@ def main() -> None:
     configObject: configreader = configreader()
     configObject.generateConfigObject()
     configuration: dict = configObject.configObject
-    client = elasticClient(configuration)
-    client.getData_outbound_sms()
-    desired_keys_outbound_sms = ["SRC_NAME_NEW",
+    outbound_client = elasticclient(configuration)
+    inbound_client = elasticclient(configuration)
+    outbound_client.getData_outbound_sms()
+    inbound_client.getData_inbound_sms()
+    desired_keys_outbound_sms: list = ["SRC_NAME_NEW",
                                  "DEST_MSC_Operator",
                                  "DEST_IMSI_Operator",
                                  "SINK_NAME",
                                  "Routing_Index_BT"]
+    desired_keys_inbound_sms: list = ["CALLING_PARTY_GT_Operator",
+                                      "STATE_TS"
+                                     ]
+    inbound_sms_dict_list: list = []
     outbound_sms_dict_list: list = []
-    for record in client.data:
+    for record in outbound_client.data:
         processor = dict_processor(record['_source'], list_of_keys=desired_keys_outbound_sms)
         processed_dict = processor.select_desired_keys()
         outbound_sms_dict_list.append(processed_dict)
     list_of_found_dicts: list = []
-    aggregated_list_of_sms_dict: dict = []
+    aggregated_list_of_sms_dict: list = []
     for item in outbound_sms_dict_list:
         count: int = 0
         for elem in outbound_sms_dict_list:
@@ -139,6 +145,16 @@ def main() -> None:
     print("##############Outbound SMS report########### ###")
     print(tabulate(aggregated_list_of_sms_dict, headers='keys', tablefmt="pretty"))
 
+
+    for record in inbound_client.data:
+        processor = dict_processor(record['_source'], list_of_keys=desired_keys_inbound_sms)
+        processed_dict = processor.select_desired_keys()
+        date_object = datetime.strptime(processed_dict["STATE_TS"], "%Y%m%d%H%M%S")
+        day_string = str(date_object.year) + '/' + str(date_object.month) + '/' + str(date_object.day)
+        del processed_dict['STATE_TS']
+        processed_dict['Day'] = day_string
+        inbound_sms_dict_list.append(processed_dict)
+    print(inbound_sms_dict_list)
 
 if __name__ == "__main__":
    main()
