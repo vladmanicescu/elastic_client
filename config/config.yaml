@@ -4,7 +4,6 @@ elastic_client_config:
   elasticPrefix: ''
   elasticport: '9200'
   elasticUser: 'elastic'
-  elasticPassword: 'jOTI2KT=u+z-zEwbHULw'
   elasticIndex: 'sms'
   actions: []
   fileRecordCount: 160000

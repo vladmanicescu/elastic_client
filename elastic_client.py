@@ -6,6 +6,7 @@ from dict_processor import dictProcessor as dict_processor
 from tabulate import tabulate
 import urllib3
 import csv
+import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class elasticclient:
@@ -21,7 +22,7 @@ class elasticclient:
         self.elasticURL = '%s://%s:%s@%s:%s/%s' % (
         config_dict['elastic_client_config']['elastic_protocol'],
         config_dict['elastic_client_config']['elasticUser'],
-        config_dict['elastic_client_config']['elasticPassword'],
+        os.getenv("ELASTIC_PASSWORD"),
         config_dict['elastic_client_config']['elastichost'],
         config_dict['elastic_client_config']['elasticport'],
         config_dict['elastic_client_config']['elasticPrefix'])
