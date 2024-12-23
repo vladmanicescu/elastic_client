@@ -25,6 +25,7 @@ class elasticclient:
         config_dict['elastic_client_config']['elastichost'],
         config_dict['elastic_client_config']['elasticport'],
         config_dict['elastic_client_config']['elasticPrefix'])
+        self.prefix = config_dict["inbound_report_config"]["calling_party_prefix"]
         self.elasticclient = Elasticsearch([self.elasticURL],verify_certs=False)
 
     def getData_outbound_sms(self) -> None:
@@ -80,7 +81,7 @@ class elasticclient:
                                      "must": [
                                        {"match": {"TYPE": "M"}},
                                        {"wildcard": {"STATE": "Delivered*"}},
-                                       {"wildcard": {"CALLING_PARTY_GT": "*43*"}},
+                                       {"wildcard": {"CALLING_PARTY_GT": self.prefix}},
                                        {"range": {"STATE_TS": {
                                            "gt" : previousMonth,
                                            "lt":  actualMonth
@@ -119,6 +120,8 @@ class ReportGenerator:
         self.sale_rate =sale_rate
 
     def generate_report(self)-> None:
+        aggregated_list_of_delivered_sms: list = []
+        aggregated_list_of_sale_amount: list = []
         with open("./report/report.csv", 'w') as reportFile:
             writer = csv.writer(reportFile)
             writer.writerow(self.headers)
@@ -132,6 +135,15 @@ class ReportGenerator:
                     item['count'] * self.sale_rate
                 )
                 writer.writerow(csv_line)
+            aggregated_list_of_delivered_sms.append(item['count'])
+            aggregated_list_of_sale_amount.append(item['count'] * self.sale_rate)
+        with open("./report/report.csv", 'a') as report_file:
+            writer = csv.writer(report_file)
+            writer.writerow(("Total",
+                             sum(aggregated_list_of_delivered_sms),
+                             self.sale_rate,
+                             sum(aggregated_list_of_sale_amount)
+                             ))
 
 def main() -> None:
     """
