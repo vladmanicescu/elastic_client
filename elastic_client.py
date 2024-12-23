@@ -5,6 +5,7 @@ from datetime import datetime
 from dict_processor import dictProcessor as dict_processor
 from tabulate import tabulate
 import urllib3
+import csv
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class elasticclient:
@@ -79,7 +80,7 @@ class elasticclient:
                                      "must": [
                                        {"match": {"TYPE": "M"}},
                                        {"wildcard": {"STATE": "Delivered*"}},
-                                       {"wildcard": {"CALLING_PARTY_GT": '*43*'}},
+                                       {"wildcard": {"CALLING_PARTY_GT": "*43*"}},
                                        {"range": {"STATE_TS": {
                                            "gt" : previousMonth,
                                            "lt":  actualMonth
@@ -103,6 +104,34 @@ class elasticclient:
                                }
                          )
 
+class ReportGenerator:
+    """Class that generates csv reports based on a list of dictionaries with relevant data"""
+    def __init__(self,
+                 data_list: list,
+                 sale_rate: float,
+                 headers: tuple = ('Day',
+                                  'Delivered SMS',
+                                  'Sale Rate',
+                                  'Sale Amount')
+                                  )-> None:
+        self.data_list = data_list
+        self.headers = headers
+        self.sale_rate =sale_rate
+
+    def generate_report(self)-> None:
+        with open("./report/report.csv", 'w') as reportFile:
+            writer = csv.writer(reportFile)
+            writer.writerow(self.headers)
+        for item in self.data_list:
+            with open("./report/report.csv", 'a') as reportFile:
+                writer = csv.writer(reportFile)
+                csv_line = (
+                    item['Day'],
+                    item['count'],
+                    self.sale_rate,
+                    item['count'] * self.sale_rate
+                )
+                writer.writerow(csv_line)
 
 def main() -> None:
     """
@@ -168,7 +197,8 @@ def main() -> None:
             list_of_found_dicts.append(item)
             aggregated_list_of_sms_dict.append(extended_dict_inbound_sms)
 
-    print(aggregated_list_of_sms_dict)
+    report = ReportGenerator(aggregated_list_of_sms_dict, configuration['inbound_report_config']['sale_rate'])
+    report.generate_report()
 
 if __name__ == "__main__":
    main()

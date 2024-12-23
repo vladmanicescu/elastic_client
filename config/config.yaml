@@ -1,13 +1,15 @@
 elastic_client_config:
   elastic_protocol: https
-  elastichost: '3.226.239.99'
+  elastichost: '3.93.36.21'
   elasticPrefix: ''
   elasticport: '9200'
   elasticUser: 'elastic'
-  elasticPassword: 'l+G1pJ92zHpMza3lIYdB'
+  elasticPassword: 'HYG6gBwrQX05=WfbHWBP'
   elasticIndex: 'sms'
   actions: []
   fileRecordCount: 160000
   fileCounter: 0
 query_config:
   index: 'sms'
+inbound_report_config:
+  sale_rate: .5
