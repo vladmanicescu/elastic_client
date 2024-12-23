@@ -110,7 +110,7 @@ class ReportGenerator:
     """Class that generates csv reports based on a list of dictionaries with relevant data"""
     def __init__(self,
                  data_list: list,
-                 sale_rate: float,
+                 sale_rate: float = 0,
                  headers: tuple = ('Day',
                                   'Delivered SMS',
                                   'Sale Rate',
@@ -120,14 +120,31 @@ class ReportGenerator:
         self.headers = headers
         self.sale_rate =sale_rate
 
-    def generate_report(self)-> None:
+    def generate_report_outbound(self):
+       with open('report_outbound/report.csv', 'w') as reportFile:
+           writer = csv.writer(reportFile)
+           writer.writerow(self.headers)
+       for item in self.data_list:
+           with open("report_outbound/report.csv", 'a') as reportFile:
+                writer = csv.writer(reportFile)
+                csv_line = (
+                    item['SRC_NAME_NEW'],
+                    item['DEST_MSC_Operator'],
+                    item['DEST_IMSI_Operator'],
+                    item['SINK_NAME'],
+                    item['Routing_Index_BT'],
+                    item['count']
+                )
+                writer.writerow(csv_line)
+
+    def generate_report_inbound(self)-> None:
         aggregated_list_of_delivered_sms: list = []
         aggregated_list_of_sale_amount: list = []
-        with open("./report/report.csv", 'w') as reportFile:
+        with open("report_inbound/report.csv", 'w') as reportFile:
             writer = csv.writer(reportFile)
             writer.writerow(self.headers)
         for item in self.data_list:
-            with open("./report/report.csv", 'a') as reportFile:
+            with open("report_inbound/report.csv", 'a') as reportFile:
                 writer = csv.writer(reportFile)
                 csv_line = (
                     item['Day'],
@@ -138,7 +155,7 @@ class ReportGenerator:
                 writer.writerow(csv_line)
             aggregated_list_of_delivered_sms.append(item['count'])
             aggregated_list_of_sale_amount.append(item['count'] * self.sale_rate)
-        with open("./report/report.csv", 'a') as report_file:
+        with open("report_inbound/report.csv", 'a') as report_file:
             writer = csv.writer(report_file)
             writer.writerow(("Total",
                              sum(aggregated_list_of_delivered_sms),
@@ -184,8 +201,17 @@ def main() -> None:
         if item not in list_of_found_dicts:
             list_of_found_dicts.append(item)
             aggregated_list_of_sms_dict.append(extended_dict_outbound_sms)
-    print("##############Outbound SMS report########### ###")
+    print("##############Outbound SMS report_inbound########### ###")
     print(tabulate(aggregated_list_of_sms_dict, headers='keys', tablefmt="pretty"))
+    outbound_headers = ("SRC_NAME_NEW",
+                        "DEST_MSC_Operator",
+                        "DEST_IMSI_Operator",
+                        "SINK_NAME",
+                        "Routing_Index_BT",
+                        "count"
+                         )
+    report_outbound = ReportGenerator(aggregated_list_of_sms_dict, headers=outbound_headers)
+    report_outbound.generate_report_outbound()
 
 
     for record in inbound_client.data:
@@ -211,7 +237,7 @@ def main() -> None:
             aggregated_list_of_sms_dict.append(extended_dict_inbound_sms)
 
     report = ReportGenerator(aggregated_list_of_sms_dict, configuration['inbound_report_config']['sale_rate'])
-    report.generate_report()
+    report.generate_report_inbound()
 
 if __name__ == "__main__":
    main()
