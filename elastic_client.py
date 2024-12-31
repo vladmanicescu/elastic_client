@@ -293,11 +293,21 @@ def process_inbound_report() -> None:
                 inboundReport.generate_report(report_data)
             inboundReport.generate_total(operator['sale_rate'])
 
+def send_reporting_mail(command: str) -> None:
+    os.system(command)
+
 def main():
+    configObject: configreader = configreader()
+    configObject.generateConfigObject()
+    configuration: dict = configObject.configObject
+    cmd_outbound: str = configuration["email_client_config"]["command_outbound"]
+    cmd_inbound: str = configuration["email_client_config"]["command_inbound"]
     if options.outbound:
         process_outbound_report()
+        send_reporting_mail(cmd_outbound)
     elif options.inbound:
         process_inbound_report()
+        send_reporting_mail(cmd_inbound)
 
 
 if __name__ == "__main__":

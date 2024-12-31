@@ -38,3 +38,6 @@ outbound_report_config:
     routing_index: 21004
   - routing_index_bt: "EE Limited (TM)"
     routing_index: 21005
+email_client_config:
+  command_outbound: "pwd" # dummy command to be changed with real one
+  command_inbound: "pwd" # dummy  command to be changed with real one
