@@ -38,12 +38,15 @@ class elasticclient:
         """
         self.data = self.elasticclient.search(
                           index=self.index,
-                          body={ "_source": ["SRC_NAME_NEW", "DEST_MSC_Operator", "DEST_IMSI_Operator", "SINK_NAME", "Routing_Index_BT"],
+                          request_timeout=600,
+                          body={
+                                   "_source": ["SRC_NAME_NEW", "DEST_MSC_Operator", "DEST_IMSI_Operator", "SINK_NAME", "ROUTING_INDEX"],
+                                   "size" : 10000,
                                    "query": {
                                    "bool": {
                                      "must": [
                                        {"match": {"TYPE": "M"}},
-                                       {"wildcard": {"STATE": "Delivered*"}},
+                                       {"wildcard": {"STATE.keyword": "Delivered*"}},
                                        {"range": {"STATE_TS": {
                                            "gte" : start_date,
                                            "lt":  end_date
@@ -55,7 +58,7 @@ class elasticclient:
                                                    "must_not": [
                                                        {
                                                            "term": {
-                                                               "SRC_NAME_NEW": "Inbound"
+                                                               "SRC_NAME_NEW.keyword": "Inbound"
                                                            }
                                                        }
                                                    ]
@@ -67,24 +70,26 @@ class elasticclient:
                                  "aggs": {
                                    "result": {
                                      "multi_terms": {
+                                       "size": 10000,
                                        "terms": [{
-                                         "field": "SRC_NAME_NEW"
+                                         "field": "SRC_NAME_NEW.keyword"
                                        }, {
-                                         "field": "DEST_MSC_Operator"
+                                         "field": "DEST_MSC_Operator.keyword"
                                        },{
-                                        "field": "DEST_IMSI_Operator"
+                                        "field": "DEST_IMSI_Operator.keyword"
                                        },{
-                                        "field": "SINK_NAME"
+                                        "field": "SINK_NAME.keyword"
                                        },{
-                                       "field": "Routing_Index_BT"
+                                       "field": "ROUTING_INDEX.keyword"
                                        }]
                                      }
                                    }
                                  }
                                }
+
                          )
 
-    def getData_inbound_sms(self,start_date: str, end_date: str) -> None:
+    def getData_inbound_sms(self,start_date: str, end_date: str, calling_party_gt_operator: str) -> None:
         """
         Method that gets the data from elasticsearch
         :return: None
@@ -95,11 +100,11 @@ class elasticclient:
                   "query": {
                       "bool": {
                           "must": [
-                              {"match": {"TYPE": "M"}},
-                              {"wildcard": {"STATE": "Delivered*"}},
-                              {"wildcard": {"CALLING_PARTY_GT": "*43*"}},
-                              {"range": {"STATE_TS": {
-                                  "gt": start_date,
+                              {"match": {"TYPE.keyword": "M"}},
+                              {"wildcard": {"STATE.keyword": "Delivered*"}},
+                              {"match": {"CALLING_PARTY_GT.Operator.keyword": calling_party_gt_operator}},
+                              {"range": {"STATE_TS.keyword": {
+                                  "gte": start_date,
                                   "lt": end_date
                               }}}
                           ],
@@ -109,7 +114,7 @@ class elasticclient:
                                       "must": [
                                           {
                                               "term": {
-                                                  "SRC_NAME_NEW": "Inbound"
+                                                  "SRC_NAME_NEW.keyword": "Inbound"
                                               }
                                           }
                                       ]
@@ -121,11 +126,13 @@ class elasticclient:
                   "aggs": {
                       "result": {
                           "multi_terms": {
+                              "size": 10000,
                               "terms": [{
-                                  "field": "STATE_TS",
-                                  "format": "yyyy-MM-dd"
-                              },{
-                                  "field": "CALLING_PARTY_GT_Operator"
+                                  "script": {
+                                      "inline": "doc['STATE_TS.keyword'].getValue().substring(0,8)"
+                                  }
+                              }, {
+                                  "field": "CALLING_PARTY_GT_Operator.keyword"
                               }]
                           }
                       }
@@ -171,6 +178,22 @@ class InboundReport(ReportGenerator):
         with open(self.report_file_path, 'a') as reportFile:
             writer = csv.writer(reportFile)
             writer.writerow(data)
+
+    def generate_total(self, sale_rate: float) -> None:
+        with open(self.report_file_path, 'r') as reportFile:
+            reader = csv.reader(reportFile)
+        delivered_sms_list: list = [ x[1] for x in reader ]
+        sale_amount_list: list = [ x[3] for x in reader]
+        delivered_sms_total: int = sum(delivered_sms_list)
+        sale_amount_total: float = sum(sale_amount_list)
+        total_line: tuple = ("Total",
+                             delivered_sms_total,
+                             sale_rate,
+                             sale_amount_total)
+        with open(self.report_file_path, 'a') as reportFile:
+            writer = csv.writer(reportFile)
+            writer.writerow(total_line)
+
 
 
 def process_outbound_report() -> None:
@@ -220,6 +243,7 @@ def process_outbound_report() -> None:
         previousMonth: str = str(int(datetime.now().strftime("%Y%m")) - 1) + "01000000"
         actualMonth: str = datetime.now().strftime("%Y%m") + "01000000"
         outbound_client.getData_outbound_sms(previousMonth, actualMonth)
+        print (outbound_client.data)
         outbound_sms_data = outbound_client.data['aggregations']['result']['buckets']
         for item in outbound_sms_data:
             report_data: list = []
@@ -241,21 +265,23 @@ def process_inbound_report() -> None:
                         "Sale Rate",
                         "Sale Amount"
                          )
-    inboundReport = InboundReport('./report_inbound/report.csv')
-    inboundReport.generate_header(inbound_headers)
     if options.daily_one_month:
         pass
     elif options.one_query_prev_month:
         previousMonth: str = str(int(datetime.now().strftime("%Y%m")) - 1) + "01000000"
         actualMonth: str = datetime.now().strftime("%Y%m") + "01000000"
-        inbound_client.getData_inbound_sms(previousMonth, actualMonth)
-        inbound_sms_data = inbound_client.data['aggregations']['result']['buckets']
-        for item in inbound_sms_data:
-            report_data: list = [item['key'][0],
-                                 item['doc_count'],
-                                 configuration['inbound_report_config']['sale_rate'],
-                                 float(configuration['inbound_report_config']['sale_rate']) * item['doc_count']]
-            inboundReport.generate_report(report_data)
+        for operator in configuration["inbound_report_config"]:
+            inboundReport = InboundReport(f'./report_inbound/{operator["calling_part_gt_operator"]}_report.csv')
+            inboundReport.generate_header(inbound_headers)
+            inbound_client.getData_inbound_sms(previousMonth, actualMonth, operator["calling_part_gt_operator"])
+            inbound_sms_data = inbound_client.data['aggregations']['result']['buckets']
+            for item in inbound_sms_data:
+                report_data: list = [item['key'][0],
+                                     item['doc_count'],
+                                     operator['sale_rate'],
+                                     float(operator['sale_rate']) * item['doc_count']]
+                inboundReport.generate_report(report_data)
+            inboundReport.generate_total(operator['sale_rate'])
 
 def main():
     if options.outbound:

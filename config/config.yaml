@@ -11,5 +11,15 @@ elastic_client_config:
 query_config:
   index: 'sms'
 inbound_report_config:
-  sale_rate: .5
-  calling_party_prefix: "*43*"
+  - calling_part_gt_operator: "Sky UK Limited"
+    sale_rate: 0.02
+  - calling_part_gt_operator: "Telefonica UK Limited"
+    sale_rate: 0.022
+  - calling_part_gt_operator: "Sky UK Limited"
+    sale_rate: 0.02
+  - calling_part_gt_operator: "Hutchison 3G UK Ltd"
+    sale_rate: 0.016
+  - calling_part_gt_operator: "Vodafone Limited"
+    sale_rate: 0.022
+  - calling_part_gt_operator: "EE Limited (Orange)"
+    sale_rate: 0.02
