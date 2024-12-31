@@ -23,3 +23,18 @@ inbound_report_config:
     sale_rate: 0.022
   - calling_part_gt_operator: "EE Limited (Orange)"
     sale_rate: 0.02
+outbound_report_config:
+  - routing_index_bt: "EE_SK1"
+    routing_index: 20
+  - routing_index_bt: "EE_TC_SK1"
+    routing_index: 21
+  - routing_index_bt: "Hutchison 3G UK Ltd"
+    routing_index: 21001
+  - routing_index_bt: "Telefonica UK Limited"
+    routing_index: 21002
+  - routing_index_bt: "Sky UK Limited"
+    routing_index: 21003
+  - routing_index_bt: "Lycamobile (UK) Limited"
+    routing_index: 21004
+  - routing_index_bt: "EE Limited (TM)"
+    routing_index: 21005

@@ -150,8 +150,9 @@ class ReportGenerator(ABC):
         pass
 
 class OutboundReport(ReportGenerator):
-    def __init__(self, report_file_path: str) -> None :
+    def __init__(self, report_file_path: str, routing_index_mapping: dict) -> None :
         self.report_file_path = report_file_path
+        self.routing_index_mapping = routing_index_mapping
 
     def generate_header(self, headers: tuple) -> None:
         with open(self.report_file_path, 'w') as reportFile:
@@ -159,6 +160,14 @@ class OutboundReport(ReportGenerator):
             writer.writerow(headers)
 
     def generate_report(self, data: list) -> None:
+        found: bool = False
+        for item in self.routing_index_mapping:
+            if data[4] == item['routing_index']:
+                data[4] = item['routing_index_bt']
+                found = True
+                break
+        if not found:
+            data[4] = "Unknown"
         data = tuple(data)
         with open(self.report_file_path, 'a') as reportFile:
             writer = csv.writer(reportFile)
@@ -204,6 +213,7 @@ def process_outbound_report() -> None:
     configObject: configreader = configreader()
     configObject.generateConfigObject()
     configuration: dict = configObject.configObject
+    routing_index_mapping = configuration["outbound_report_config"]
     outbound_client = elasticclient(configuration)
     outbound_headers = ("SRC_NAME_NEW",
                         "DEST_MSC_Operator",
